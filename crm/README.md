@@ -17,4 +17,4 @@ the embedded image to be kept
 EmbedFormatException 
 
 the keyword of tabular content 
-rowException = Purpose
+rowException
