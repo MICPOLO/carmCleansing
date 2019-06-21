@@ -157,7 +157,8 @@ public class dataCleansing {
 	
 	public static void mainEntityLabel(String fileName) throws Exception {
 		Document doc = new Document(fileName);
-		
+		String pattern = "(^\\d\\.)";
+		Pattern regexPattern = Pattern.compile("^\\d\\.");
 		int counter = 0;
 		String Title = "";
 		
@@ -179,7 +180,8 @@ public class dataCleansing {
 				if(run.getFont().getBold()){
 					boldLast++;
 				}
-				if(run.getParentParagraph().isListItem()){
+				Matcher matcher = regexPattern.matcher(run.getText());
+				if(run.getParentParagraph().isListItem()||matcher.find()){
 					isList=true;
 				}
 			}
@@ -196,14 +198,24 @@ public class dataCleansing {
 						runText+= run.getText();
 						if(runText.contains("  ")){
 							String[] splitedText = runText.split("  ",2);
+							Matcher matcher = regexPattern.matcher(splitedText[0]);
+							if(matcher.find()){
+								splitedText[0] = matcher.replaceAll("");
+							}else{
+								run.getParentParagraph().getListFormat().removeNumbers();
+							}
 							Title = splitedText[0];
-							run.getParentParagraph().getListFormat().removeNumbers();
 							run.setText("<header>"+counter+". "+splitedText[0]+"<header>"+" "+splitedText[1]);
 						}
 						else{
 						runText = runText.trim().replaceAll("(\\s)+", " ");
+						Matcher matcher = regexPattern.matcher(runText);
+						if(matcher.find()){
+							runText = matcher.replaceAll("");
+						}else{
+							run.getParentParagraph().getListFormat().removeNumbers();
+						}						
 						Title = runText;
-						run.getParentParagraph().getListFormat().removeNumbers();
 						run.setText("<header>"+counter+". "+runText+"<header>");
 						}
 					}else{
@@ -213,7 +225,6 @@ public class dataCleansing {
 					
 				}else if(counter>0){
 					//Subtitle
-					System.out.println(run.getText());
 					if(boldCurrent==boldLast && titleChecker(run)){
 						runText+= run.getText();
 						runText = runText.trim().replaceAll("(\\s)+", " ");
@@ -228,7 +239,6 @@ public class dataCleansing {
 		}
 		}
 				
-			System.out.println(runText);	
 			
 			}
 		}
