@@ -184,7 +184,7 @@ public class dataCleansing {
 						isNext = true; 
 						continue;
 					}
-					if(isNext == true && !xwpfTableCell.getText().trim().equals(":")){
+					if(isNext == true && !xwpfTableCell.getText().trim().equals(":") &&!xwpfTableCell.getText().trim().equals("")){
 						trName = xwpfTableCell.getText();
 						trName.replace(":","");
 						break;
