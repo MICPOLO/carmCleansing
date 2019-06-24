@@ -61,6 +61,7 @@ public class dataCleansing {
 	static ArrayList<String> whiteList;
 	static ArrayList<String> EmbedFormatException;
 	static ArrayList<String> rowException;
+	static Boolean keepTable;
 	
 	
 	public static void main(String[] args) throws Exception {
@@ -74,6 +75,8 @@ public class dataCleansing {
 		EmbedFormatException = new ArrayList<String>(Arrays.asList(p.getProperty("EmbedFormatException").toString().split(",")));
 		//rowException = Extract text from the table
 		rowException = new ArrayList<String>(Arrays.asList(p.getProperty("rowException").toString().split(",")));
+		//keepTable true = convert table to text with tag, false = remove table
+		keepTable = Boolean.parseBoolean(p.getProperty("keepTable").toString());
 		is.close();
 		
 		String sourcePath = args[0];
@@ -147,11 +150,116 @@ public class dataCleansing {
 	
 	public static void mainHandler(String fileName) throws Exception{
 
-		if(rowException!=null)
+		extractTrName(fileName);
+		if(rowException!=null){
 		insertTableRowToText(rowException,fileName);
+		}
 		mainEntityLabel(fileName);
 		removeNoiseEmbedFile(fileName);
-		docxDelTable(fileName);
+		if(keepTable==true){
+			convertTableToText(fileName);	
+		}else{
+			docxDelTable(fileName);
+		}
+
+		
+		
+	}
+	
+	public static void extractTrName(String filePath) throws Exception{
+		XWPFDocument XWPFdoc = new XWPFDocument(new FileInputStream(filePath));
+		String trName = "";
+		boolean isNext = false;
+		List <XWPFTable> table = XWPFdoc.getTables();
+		for (XWPFTable xwpfTable : table) {
+			List<XWPFTableRow> row = xwpfTable.getRows();
+			for (XWPFTableRow xwpfTableRow : row) {
+				List<XWPFTableCell> cell = xwpfTableRow.getTableCells();
+				if(isNext == true){
+					break;
+				}
+				for (XWPFTableCell xwpfTableCell : cell) {
+					if(xwpfTableCell.getText().contains("TR NAME") )
+					{
+						isNext = true; 
+						continue;
+					}
+					if(isNext == true && !xwpfTableCell.getText().trim().equals(":")){
+						trName = xwpfTableCell.getText();
+						trName.replace(":","");
+						break;
+					}
+				}
+				
+			}
+			
+		}
+		XWPFdoc.close();
+		if(isNext==true){
+			String outputTrName ="<trName>";
+			outputTrName += trName;
+			outputTrName += "<trName>";
+			Document doc = new Document(filePath);		
+			DocumentBuilder builder = new DocumentBuilder(doc);
+			Font font = builder.getFont();
+			font.setSize(10);
+			font.setBold(false);
+			font.setName("Calibri");
+			font.setColor(Color.black);
+			builder.write(outputTrName);
+			doc.save(filePath);
+		
+		}
+		System.out.println("trName Extraction Completed");
+		
+	}
+	
+	public static void convertTableToText(String filePath) throws FileNotFoundException, IOException{
+		String tableContent ="";
+		XWPFDocument XWPFdoc = new XWPFDocument(new FileInputStream(filePath));
+		List <XWPFTable> table = XWPFdoc.getTables();
+		for(XWPFTable allTable:table){
+			tableContent ="";
+			XWPFTable xwpfTable =allTable;
+			List<XWPFTableRow> row = xwpfTable.getRows();
+			int lastRow = row.size();
+			int rowCounter = 0;
+			
+			for (XWPFTableRow xwpfTableRow : row) {
+				String rowText ="";
+				rowCounter++;
+				List<XWPFTableCell> cell = xwpfTableRow.getTableCells();
+				tableContent +="*";
+				for (XWPFTableCell xwpfTableCell : cell) {
+					if((xwpfTableCell.getText().trim().length()>0))
+					{
+						tableContent+="|";
+						tableContent+=xwpfTableCell.getText();
+					}
+				}
+				if(rowCounter!=row.size())
+				tableContent+="\r\n";
+			}
+			tableContent+="|";
+			
+			XWPFTableRow finalRow = xwpfTable.insertNewTableRow(0);
+			while(xwpfTable.getNumberOfRows()>1){
+				xwpfTable.removeRow(1);	
+				
+			}
+			XWPFTableRow firstRow = xwpfTable.getRow(0);
+			firstRow.addNewTableCell();
+			XWPFTableCell firstCol = firstRow.getCell(0);
+			firstCol.setText(tableContent);
+
+			xwpfTable.setWidth("100%");
+		}
+		
+		FileOutputStream out = new FileOutputStream( new File( filePath ) );
+        XWPFdoc.write( out );
+        out.close();
+        
+		System.out.println("Table to text completed");
 		
 	}
 	
@@ -354,7 +462,6 @@ public class dataCleansing {
 
 	    private static void deleteTable( XWPFDocument document, int tableIndex ) {
 	        try {
-	        	
 	        	while(true){
 	            int bodyElement = getBodyElementOfTable( document, tableIndex );
 	            System.out.println( "deleting table with bodyElement #" + bodyElement );
