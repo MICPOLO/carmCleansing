@@ -68,6 +68,8 @@ public class dataCleansing {
 		
 		Properties p =new Properties();
 		InputStream is = new FileInputStream(new File("src/main/resources/config.properties"));
+		
+		
 		p.load(is);
 		//whitelist = files format to be kept
 		whiteList = new ArrayList<String>(Arrays.asList(p.getProperty("whiteList").toString().split(",")));
@@ -175,19 +177,14 @@ public class dataCleansing {
 			List<XWPFTableRow> row = xwpfTable.getRows();
 			for (XWPFTableRow xwpfTableRow : row) {
 				List<XWPFTableCell> cell = xwpfTableRow.getTableCells();
-				if(isNext == true){
-					break;
-				}
 				for (XWPFTableCell xwpfTableCell : cell) {
 					if(xwpfTableCell.getText().contains("TR NAME") )
 					{
 						isNext = true; 
-						continue;
 					}
-					if(isNext == true && !xwpfTableCell.getText().trim().equals(":") &&!xwpfTableCell.getText().trim().equals("")){
-						trName = xwpfTableCell.getText();
-						trName.replace(":","");
-						break;
+					if(isNext==true){
+						System.out.println(xwpfTableCell.getText());
+						trName +=xwpfTableCell.getText();
 					}
 				}
 				
@@ -196,6 +193,12 @@ public class dataCleansing {
 		}
 		XWPFdoc.close();
 		if(isNext==true){
+			trName = trName.split("TR NAME")[1];
+			if(trName!=null){
+				trName = trName.split("SERIAL NUMBER")[0];					
+			}			
+			trName = trName.replace(":","").trim();
+			
 			String outputTrName ="<trName>";
 			outputTrName += trName;
 			outputTrName += "<trName>";
